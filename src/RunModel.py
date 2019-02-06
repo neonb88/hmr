@@ -53,7 +53,10 @@ class RunModel(object):
         # Theta size: camera (3) + pose (24*3) + shape (10)
         self.total_params = self.num_cam + self.num_theta + 10
 
-        self.smpl = SMPL(self.smpl_model_path, joint_type=self.joint_type)
+        self.smpl = SMPL(self.smpl_model_path, joint_type=self.joint_type)  # NOTE:  call to actual SMPL() object is here
+        print(self.smpl.__class__)
+        print('class of obj from hello_smpl.py is <class \'chumpy.ch_ops.add\'>')
+        print('\n'*3)
 
         # self.theta0_pl = tf.placeholder_with_default(
         #     self.load_mean_param(), shape=[self.batch_size, self.total_params], name='theta0')

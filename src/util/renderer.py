@@ -6,6 +6,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
 import numpy as np
 import cv2
 
@@ -19,6 +20,8 @@ colors = {
     'light_pink': [.9, .7, .7],  # This is used to do no-3d
 }
 
+outmesh_path = 'mesh.obj'
+
 
 class SMPLRenderer(object):
     def __init__(self,
@@ -26,6 +29,12 @@ class SMPLRenderer(object):
                  flength=500.,
                  face_path="tf_smpl/smpl_faces.npy"):
         self.faces = np.load(face_path)
+        with open(outmesh_path, 'a+') as fp: # TODO: why does this trash the old file? I thought it was supposed to append...
+          print('\n'*2+"saving face...")
+          print("outmesh_path is ",outmesh_path); print('\n'*2)
+          for face in self.faces+1: # Faces are 1-based, not 0-based in obj files
+            fp.write(
+            'f %d %d %d\n' %  (face[0], face[1], face[2]) )
         self.w = img_size
         self.h = img_size
         self.flength = flength
