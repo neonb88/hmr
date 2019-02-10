@@ -4,3 +4,11 @@ logs*/
 *.DS_Store
 *.pyc
 forrelease.sh
+*tar.gz
+*tar.gz.1
+*.png
+*.jpg
+*.blend
+*.obj
+tmp.txt
+hmr_setup.sh
