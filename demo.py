@@ -39,7 +39,7 @@ flags.DEFINE_string(
     'json_path', None,
     'If specified, uses the openpose output to crop the image.')
 
-outmesh_path = 'mesh.obj'
+outmesh_path = '/home/ubuntu/x/p/fresh____as_of_Dec_12_2018/vr_mall____fresh___Dec_12_2018/src/web/upload_img_flask/mesh.obj'
 
 def fix():
   # flips .obj file so faces are after vertices
