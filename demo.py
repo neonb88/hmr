@@ -34,16 +34,17 @@ from src.util import openpose as op_util
 import src.config
 from src.RunModel import RunModel
 
+config = flags.FLAGS
 flags.DEFINE_string('img_path', 'data/im1963.jpg', 'Image to run')
 flags.DEFINE_string(
     'json_path', None,
     'If specified, uses the openpose output to crop the image.')
 
-outmesh_path = '/home/ubuntu/x/p/fresh____as_of_Dec_12_2018/vr_mall____fresh___Dec_12_2018/src/web/upload_img_flask/mesh.obj'
+outmesh_path = '/home/n/x/p/fresh____as_of_Dec_12_2018/vr_mall____fresh___Dec_12_2018/src/web/upload_img_flask/mesh.obj'
 
 def fix():
   # flips .obj file so faces are after vertices
-  fresh_outmesh_path  = 'freshmesh.obj'
+  fresh_outmesh_path  = '/home/n/x/p/fresh____as_of_Dec_12_2018/vr_mall____fresh___Dec_12_2018/src/web/upload_img_flask/freshmesh.obj'
   # TODO: fix this everywhere by storing the proper filename  in a different .txt file (ie. 'obj_filename.txt')
   with open(outmesh_path, 'r') as fp:
     lines=fp.readlines()
@@ -75,6 +76,7 @@ def visualize(img, proc_param, joints, verts, cam):
 
     import matplotlib.pyplot as plt
     # plt.ion()
+    '''
     plt.figure(1)
     plt.clf()
     plt.subplot(231)
@@ -103,12 +105,14 @@ def visualize(img, proc_param, joints, verts, cam):
     plt.axis('off')
     plt.draw()
     plt.show()
+    '''
     # import ipdb
     # ipdb.set_trace()
 
 
 def preprocess_image(img_path, json_path=None):
     img = io.imread(img_path)
+    print("img.shape:\n{0}\n\n".format(img.shape))
     if img.shape[2] == 4:
         img = img[:, :, :3]
 
@@ -138,9 +142,11 @@ def main(img_path, json_path=None):
     model = RunModel(config, sess=sess)
 
     input_img, proc_param, img = preprocess_image(img_path, json_path)  # resizing would happen HERE.
+    '''
     import viz
     viz.pltshow(input_img)
     viz.pltshow(img)
+    '''
 
     # Add batch dimension: 1 x D x D x 3
     input_img = np.expand_dims(input_img, 0)
@@ -152,9 +158,9 @@ def main(img_path, json_path=None):
     joints, verts, cams, joints3d, theta = model.predict(
         input_img, get_theta=True)
     # NOTE: SIDE EFFECT.  REFACTOR!
+    print('\n'*4+"saving vertices...")
+    print("outmesh_path is ",outmesh_path); print('\n'*4)
     with open( outmesh_path, 'a') as fp:
-      print('\n'*4+"saving vertices...")
-      print("outmesh_path is ",outmesh_path); print('\n'*4)
       for vert_idx in range(verts.shape[1]):
         fp.write( 'v %f %f %f\n' % ( verts[0,vert_idx,0], verts[0,vert_idx,1], verts[0,vert_idx,2] ))
 
@@ -197,15 +203,37 @@ def main(img_path, json_path=None):
     #print(verts.shape)  #(1,6890,3)   6890 vertices
     #verts[0,-1]=np.array([10000,-10,0])
     # ^ this line "verts[0,-1]=np.array([10000,-10,0])"  worked (as hoped) to fuck up a single vertex of the skin-model.
-    visualize(img, proc_param, joints[0], verts[0], cams[0])
+    #visualize(img, proc_param, joints[0], verts[0], cams[0])
     # NOTE: this has the side effect of saving the faces at the end of the file name specified in outmesh_path
 
+def make_mesh(img_path):
+    if os.path.isfile(outmesh_path):
+      sp.call(['rm', outmesh_path]) # b/c old mesh
+
+    config(sys.argv)
+    # Using pre-trained model, change this to use your own.
+    config.load_path = src.config.PRETRAINED_MODEL
+
+    config.batch_size = 1
+
+    renderer = vis_util.SMPLRenderer(face_path=config.smpl_face_path)
+
+    main(img_path, config.json_path) # here, img_path is a parameter, not from config.
+    # NOTE: oughta do this the right way, but right now the .obj file is getting written "backward."  So we just gotta rewrite it.  We do that in the fix() function
+    fix()
+    with open(outmesh_path, 'r') as fp:
+      return fp.read() # fp?  fp.read()?  NOTE: Pier said the actual file is preferable to just the string, but I'm not sure what he means by this.  What's the difference between the file and the string contents?
+      #return fp.read()
+
+
+
+
+  
 
 if __name__ == '__main__':
     if os.path.isfile(outmesh_path):
-      sp.call(['rm', outmesh_path])
+      sp.call(['rm', outmesh_path]) # b/c old mesh
 
-    config = flags.FLAGS
     config(sys.argv)
     # Using pre-trained model, change this to use your own.
     config.load_path = src.config.PRETRAINED_MODEL

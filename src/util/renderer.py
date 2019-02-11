@@ -20,7 +20,7 @@ colors = {
     'light_pink': [.9, .7, .7],  # This is used to do no-3d
 }
 
-outmesh_path = 'mesh.obj'
+outmesh_path = '/home/n/x/p/fresh____as_of_Dec_12_2018/vr_mall____fresh___Dec_12_2018/src/web/upload_img_flask/mesh.obj'
 
 
 class SMPLRenderer(object):
