@@ -191,12 +191,36 @@ def betas(img, json_path=None):
     # shape is 10D shape coefficients of SMPL
     joints, verts, cams, joints3d, theta = model.predict(
         input_img, get_theta=True)                        # NOTE: I'm p sure predict() mutates model?  (side effect)
-    # NOTE: SIDE EFFECT.  REFACTOR!
     return model.smpl.betas
+    # TODO: copy from def main3() ==> betas()
+
     # NOTE: we should be able to scale up/down the points by a simple multiplication.
     # for saving .obj file, double-check "def main()"
 #=======================================================
 
+#=======================================================
+def main3(img_path, json_path=None):
+    sess = tf.Session()
+    model = RunModel(config, sess=sess)
+
+    input_img, proc_param, img = preprocess_image(img_path, json_path)  # resizing would happen HERE.
+
+    # Add batch dimension: 1 x D x D x 3
+    input_img = np.expand_dims(input_img, 0)
+
+    # Theta is the 85D vector holding [camera, pose, shape]
+    # where camera is 3D [s, tx, ty]
+    # pose is 72D vector holding the rotation of 24 joints of SMPL in axis angle format
+    # shape is 10D shape coefficients of SMPL
+    joints, verts, cams, joints3d, theta = model.predict(
+        input_img, get_theta=True)
+    return model.smpl.shapedirs # this variable (shapedirs) is of type:   <tf.Variable 'shapedirs:0' shape=(10, 20670) dtype=float32_ref>   NOTE: what the fuck does 20670 mean?
+    '''
+    import pickle as pkl
+    output = open('RunModel.pkl','wb')  # pickle doesn't work on classes in python2.  Or maybe it DOES, but I don't care enough right now.
+    pkl.dump(model,output)
+    output.close()
+    '''
 #=======================================================
 def main(img_path, json_path=None):
     sess = tf.Session()
@@ -305,6 +329,7 @@ if __name__ == '__main__':
 
     renderer = vis_util.SMPLRenderer(face_path=config.smpl_face_path)
 
+    #main3(config.img_path, config.json_path)
     main(config.img_path, config.json_path)
     # NOTE: oughta do this the right way, but right now the .obj file is getting written "backward."  So we just gotta rewrite it.  We do that in the fix() function
     fix()
