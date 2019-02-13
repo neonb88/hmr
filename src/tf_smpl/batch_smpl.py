@@ -85,6 +85,8 @@ class SMPL(object):
             import ipdb
             ipdb.set_trace()
 
+    # This func is part of class SMPL.  -Nathan, FEb 13, 2019
+    # __call__() is used on an instance of SMPL (more about __call__ [here](https://stackoverflow.com/questions/9663562/what-is-the-difference-between-init-and-call-in-python)).  ie. model=SMPL(); model(beta, theta)
     def __call__(self, beta, theta, get_skin=False, name=None):
         """
         Obtain SMPL with shape (beta) & pose (theta) inputs.

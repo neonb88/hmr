@@ -29,6 +29,8 @@ SMPL_FACE_PATH = osp.join(curr_path, '../src/tf_smpl', 'smpl_faces.npy')
 
 # Default pred-trained model path for the demo.
 PRETRAINED_MODEL = osp.join(model_dir, 'model.ckpt-667589')
+print("model_dir: \n",model_dir)
+print("PRETRAINED_MODEL = \n {0}\n".format(PRETRAINED_MODEL))
 
 flags.DEFINE_string('smpl_model_path', SMPL_MODEL_PATH,
                     'path to the neurtral smpl model')

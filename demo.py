@@ -112,7 +112,7 @@ def visualize(img, proc_param, joints, verts, cam):
 
 #=======================================================
 def preprocess_image(img_path, json_path=None):
-    img = io.imread(img_path)
+    img = io.imread(img_path)  # img is a numpy array.  Yusssss
     print("img.shape:\n{0}\n\n".format(img.shape))
     if img.shape[2] == 4:
         img = img[:, :, :3]
@@ -138,7 +138,6 @@ def preprocess_image(img_path, json_path=None):
     return crop, proc_param, img
 #=======================================================
 def preprocess_image_nathan(img, json_path=None):
-    img = io.imread(img_path)
     print("img.shape:\n{0}\n\n".format(img.shape))
     if img.shape[2] == 4:
         img = img[:, :, :3]
@@ -161,21 +160,27 @@ def preprocess_image_nathan(img, json_path=None):
     # Normalize image to [-1, 1]
     crop = 2 * ((crop / 255.) - 0.5)
 
-    return crop, proc_param, img
+    return crop, proc_param, img  # what the f**k was Kanazawa even using this 'img' variable at the end for?  Maybe it's just left over from old code.
 
 
 #=======================================================
-def main_nathan_0(img, json_path=None):
+def betas(img, json_path=None):
+    config = flags.FLAGS
+    config(sys.argv) # sys.argv were set by an earlier call in vhmr.make_mesh().  Feb 13, 2019, comment from Nathan Bendich.
+    """
+    flags.DEFINE_string(
+        'json_path', None,
+        'If specified, uses the openpose output to crop the image.')
+    """
+    print("src.config.PRETRAINED_MODEL:\n{0}".format(src.config.PRETRAINED_MODEL))
+    config.load_path = src.config.PRETRAINED_MODEL
+    #print(config.load_path)  #no bueno by this point
+    config.batch_size = 1
+
     # 0th (1st) iteration of refactoring this mess of code.
     sess = tf.Session()
     model = RunModel(config, sess=sess)
-
-    input_img, proc_param, img = preprocess_image(img_path, json_path)  # resizing would happen HERE.
-    '''
-    import viz
-    viz.pltshow(input_img)
-    viz.pltshow(img)
-    '''
+    input_img, proc_param, img = preprocess_image_nathan(img, json_path)  # resizing would happen HERE.
 
     # Add batch dimension: 1 x D x D x 3
     input_img = np.expand_dims(input_img, 0)
@@ -185,74 +190,13 @@ def main_nathan_0(img, json_path=None):
     # pose is 72D vector holding the rotation of 24 joints of SMPL in axis angle format
     # shape is 10D shape coefficients of SMPL
     joints, verts, cams, joints3d, theta = model.predict(
-        input_img, get_theta=True)
+        input_img, get_theta=True)                        # NOTE: I'm p sure predict() mutates model?  (side effect)
     # NOTE: SIDE EFFECT.  REFACTOR!
-    print('\n'*4+"saving vertices...")
-    print("outmesh_path is ",outmesh_path); print('\n'*4)
-    with open( outmesh_path, 'a') as fp:
-      for vert_idx in range(verts.shape[1]):
-        fp.write( 'v %f %f %f\n' % ( verts[0,vert_idx,0], verts[0,vert_idx,1], verts[0,vert_idx,2] ))
+    return model.smpl.betas
+    # NOTE: we should be able to scale up/down the points by a simple multiplication.
+    # for saving .obj file, double-check "def main()"
+#=======================================================
 
-    """
-    print('verts.shape:\n',verts.shape) # (1, 6890, 3)
-    print('cams:\n',cams)
-    print('joints:\n',joints)
-    print('joints3d:\n',joints3d)
-    print('theta:\n',theta)
-    """
-
-    d=dir;from pprint import pprint as p; #print(d(model)) #['E_var', '__class__', '__delattr__', '__dict__', '__doc__', '__format__', '__getattribute__', '__hash__', '__init__', '__module__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__', '__weakref__', 'all_Js', 'all_cams', 'all_kps', 'all_verts', 'batch_size', 'build_test_model_ief', 'config', 'data_format', 'final_thetas', 'images_pl', 'img_feat', 'img_size', 'joint_type', 'load_path', 'mean_value', 'mean_var', 'model_type', 'num_cam', 'num_stage', 'num_theta', 'predict', 'predict_dict', 'prepare', 'proj_fn', 'saver', 'sess', 'smpl', 'smpl_model_path', 'total_params']
-    #p(d(model.smpl)) # ['J_regressor', 'J_transformed', '__call__', '__class__', '__delattr__', '__dict__', '__doc__', '__format__', '__getattribute__', '__hash__', '__init__', '__module__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__', '__weakref__', 'joint_regressor', 'num_betas', 'parents', 'posedirs', 'shapedirs', 'size', 'v_template', 'weights']
-    #p(model.smpl.weights) # <tf.Variable 'lbs_weights:0' shape=(6890, 24) dtype=float32_ref>.  was the same regardless of which image I used
-    #p(model.smpl.J_regressor) # <tf.Variable 'J_regressor:0' shape=(6890, 24) dtype=float32_ref>
-    #p(model.smpl.num_betas) # 10 and 10
-
-    #print("model.smpl.beta: \n{0}".format(model.smpl.beta))  # no field .beta or .betas
-
-    print("np.amax(verts) is {0}".format(np.amax(verts)))
-    print("np.amin(verts) is {0}".format(np.amin(verts)))
-    # NOTE:  it depends on the size of the human in the image!
-    # for back.jpg:
-    #  max is  0.694546461105
-    #  min is -1.04786634445
-
-    # for left.jpg:
-    #  np.amax(verts) is  0.617345392704
-    #  np.amin(verts) is -1.08882558346
-
-    # for data/im1954.jpg, 
-    #  np.amax(verts) is 0.487660825253
-    #  np.amin(verts) is -1.08803486824  # NOTE: TINY!   next TODO: try with data/coco...
-    # for data/im1963.jpg
-    #  np.amax(verts) is 0.789033710957
-    #  np.amin(verts) is -0.653137624264
-
-    # NOTE: should be able to scale up/down the points by a simple multiplication.
-
-    #print(verts.shape)  #(1,6890,3)   6890 vertices
-    #verts[0,-1]=np.array([10000,-10,0])
-    # ^ this line "verts[0,-1]=np.array([10000,-10,0])"  worked (as hoped) to fuck up a single vertex of the skin-model.
-    #visualize(img, proc_param, joints[0], verts[0], cams[0])
-    # NOTE: this has the side effect of saving the faces at the end of the file name specified in outmesh_path
-
-def make_mesh(img_path):
-    if os.path.isfile(outmesh_path):
-      sp.call(['rm', outmesh_path]) # b/c old mesh
-
-    config(sys.argv)
-    # Using pre-trained model, change this to use your own.
-    config.load_path = src.config.PRETRAINED_MODEL
-
-    config.batch_size = 1
-
-    renderer = vis_util.SMPLRenderer(face_path=config.smpl_face_path)
-
-    main(img_path, config.json_path) # here, img_path is a parameter, not from config.
-    # NOTE: oughta do this the right way, but right now the .obj file is getting written "backward."  So we just gotta rewrite it.  We do that in the fix() function
-    fix()
-    with open(outmesh_path, 'r') as fp:
-      return fp.read() # fp?  fp.read()?  NOTE: Pier said the actual file is preferable to just the string, but I'm not sure what he means by this.  What's the difference between the file and the string contents?
-      #return fp.read()
 #=======================================================
 def main(img_path, json_path=None):
     sess = tf.Session()
@@ -294,6 +238,7 @@ def main(img_path, json_path=None):
     #p(model.smpl.weights) # <tf.Variable 'lbs_weights:0' shape=(6890, 24) dtype=float32_ref>.  was the same regardless of which image I used
     #p(model.smpl.J_regressor) # <tf.Variable 'J_regressor:0' shape=(6890, 24) dtype=float32_ref>
     #p(model.smpl.num_betas) # 10 and 10
+    ######################## NOTE NOTE NOTE NOTE ########################
 
     #print("model.smpl.beta: \n{0}".format(model.smpl.beta))  # no field .beta or .betas
 
@@ -324,6 +269,7 @@ def main(img_path, json_path=None):
     # NOTE: this has the side effect of saving the faces at the end of the file name specified in outmesh_path
 
 def make_mesh(img_path):
+    # this was an old version for Pierlorenzo (~Feb 7-10, 2019)
     if os.path.isfile(outmesh_path):
       sp.call(['rm', outmesh_path]) # b/c old mesh
 

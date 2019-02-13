@@ -12,3 +12,4 @@ forrelease.sh
 *.obj
 tmp.txt
 hmr_setup.sh
+*swp
