@@ -15,7 +15,7 @@ python -m demo --img_path data/coco1.png
 # On images, with openpose output
 python -m demo --img_path data/random.jpg --json_path data/random_keypoints.json
 """
-from __future__ import absolute_import
+from __future__ import absolute_import # TODO: read up on this.  Is there a better relative_import one could implement?
 from __future__ import division
 from __future__ import print_function
 
@@ -24,6 +24,7 @@ from absl import flags
 import numpy as np
 import subprocess as sp
 import os
+import time
 
 import skimage.io as io
 import tensorflow as tf
@@ -33,6 +34,9 @@ from src.util import image as img_util
 from src.util import openpose as op_util
 import src.config
 from src.RunModel import RunModel
+#import matplotlib as mpl
+#mpl.use('Agg') # 'TkAgg'
+import matplotlib.pyplot as plt
 
 config = flags.FLAGS
 flags.DEFINE_string('img_path', 'data/im1963.jpg', 'Image to run')
@@ -40,8 +44,17 @@ flags.DEFINE_string(
     'json_path', None,
     'If specified, uses the openpose output to crop the image.')
 
-outmesh_path = '/home/n/x/p/fresh____as_of_Dec_12_2018/vr_mall____fresh___Dec_12_2018/src/web/upload_img_flask/mesh.obj'
+outmesh_path = '/home/n/x/p/fresh____as_of_Dec_12_2018/vr_mall____fresh___Dec_12_2018/src/web/upload_img_flask/mesh.obj' # faces in src/util/renderer.py
 
+#=========================================================================
+def pltshow(x):
+  plt.imshow(x); plt.show(); plt.close()
+#=========================================================================
+pr=print
+def pe(n=89):
+  print("="*n)
+def pn(n=0):
+  print("\n"*n)
 def fix():
   # flips .obj file so faces are after vertices
   fresh_outmesh_path  = '/home/n/x/p/fresh____as_of_Dec_12_2018/vr_mall____fresh___Dec_12_2018/src/web/upload_img_flask/freshmesh.obj'
@@ -60,6 +73,8 @@ def visualize(img, proc_param, joints, verts, cam):
     """
     Renders the result in original image coordinate frame.
     """
+    funcname=  sys._getframe().f_code.co_name
+    print("entering function "+funcname)
     cam_for_render, vert_shifted, joints_orig = vis_util.get_original(
         proc_param, verts, cam, joints, img_size=img.shape[:2])
 
@@ -74,9 +89,6 @@ def visualize(img, proc_param, joints, verts, cam):
     rend_img_vp2 = renderer.rotated(
         vert_shifted, -60, cam=cam_for_render, img_size=img.shape[:2])
 
-    import matplotlib.pyplot as plt
-    # plt.ion()
-    '''
     plt.figure(1)
     plt.clf()
     plt.subplot(231)
@@ -105,9 +117,11 @@ def visualize(img, proc_param, joints, verts, cam):
     plt.axis('off')
     plt.draw()
     plt.show()
-    '''
-    # import ipdb
-    # ipdb.set_trace()
+ 
+    #import ipdb
+    #ipdb.set_trace()
+    print("leaving function "+funcname)
+    plt.close()
 
 
 #=======================================================
@@ -162,76 +176,12 @@ def preprocess_image_nathan(img, json_path=None):
 
     return crop, proc_param, img  # what the f**k was Kanazawa even using this 'img' variable at the end for?  Maybe it's just left over from old code.
 
-
-#=======================================================
-def betas(img, json_path=None):
-    config = flags.FLAGS
-    config(sys.argv) # sys.argv were set by an earlier call in vhmr.make_mesh().  Feb 13, 2019, comment from Nathan Bendich.
-    """
-    flags.DEFINE_string(
-        'json_path', None,
-        'If specified, uses the openpose output to crop the image.')
-    """
-    print("src.config.PRETRAINED_MODEL:\n{0}".format(src.config.PRETRAINED_MODEL))
-    config.load_path = src.config.PRETRAINED_MODEL
-    #print(config.load_path)  #no bueno by this point
-    config.batch_size = 1
-
-    # 0th (1st) iteration of refactoring this mess of code.
-    sess = tf.Session()
-    model = RunModel(config, sess=sess)
-    input_img, proc_param, img = preprocess_image_nathan(img, json_path)  # resizing would happen HERE.
-
-    # Add batch dimension: 1 x D x D x 3
-    input_img = np.expand_dims(input_img, 0)
-
-    # Theta is the 85D vector holding [camera, pose, shape]
-    # where camera is 3D [s, tx, ty]
-    # pose is 72D vector holding the rotation of 24 joints of SMPL in axis angle format
-    # shape is 10D shape coefficients of SMPL
-    joints, verts, cams, joints3d, theta = model.predict(
-        input_img, get_theta=True)                        # NOTE: I'm p sure predict() mutates model?  (side effect)
-    return model.smpl.betas
-    # TODO: copy from def main3() ==> betas()
-
-    # NOTE: we should be able to scale up/down the points by a simple multiplication.
-    # for saving .obj file, double-check "def main()"
-#=======================================================
-
-#=======================================================
-def main3(img_path, json_path=None):
-    sess = tf.Session()
-    model = RunModel(config, sess=sess)
-
-    input_img, proc_param, img = preprocess_image(img_path, json_path)  # resizing would happen HERE.
-
-    # Add batch dimension: 1 x D x D x 3
-    input_img = np.expand_dims(input_img, 0)
-
-    # Theta is the 85D vector holding [camera, pose, shape]
-    # where camera is 3D [s, tx, ty]
-    # pose is 72D vector holding the rotation of 24 joints of SMPL in axis angle format
-    # shape is 10D shape coefficients of SMPL
-    joints, verts, cams, joints3d, theta = model.predict(
-        input_img, get_theta=True)
-    return model.smpl.shapedirs # this variable (shapedirs) is of type:   <tf.Variable 'shapedirs:0' shape=(10, 20670) dtype=float32_ref>   NOTE: what the fuck does 20670 mean?
-    '''
-    import pickle as pkl
-    output = open('RunModel.pkl','wb')  # pickle doesn't work on classes in python2.  Or maybe it DOES, but I don't care enough right now.
-    pkl.dump(model,output)
-    output.close()
-    '''
 #=======================================================
 def main(img_path, json_path=None):
     sess = tf.Session()
     model = RunModel(config, sess=sess)
 
     input_img, proc_param, img = preprocess_image(img_path, json_path)  # resizing would happen HERE.
-    '''
-    import viz
-    viz.pltshow(input_img)
-    viz.pltshow(img)
-    '''
 
     # Add batch dimension: 1 x D x D x 3
     input_img = np.expand_dims(input_img, 0)
@@ -242,20 +192,38 @@ def main(img_path, json_path=None):
     # shape is 10D shape coefficients of SMPL
     joints, verts, cams, joints3d, theta = model.predict(
         input_img, get_theta=True)
-    # NOTE: SIDE EFFECT.  REFACTOR!
+    # REVISED NOTE: the first 69 params within the Theta (uppercase theta) are pose parameters.  There are actually 23 joints we're considering, and then each of the 23 joints somehow has only 3 parameters defining a rotation around that joint.  I'm guessing it's like roll, pitch, and yaw?  last 3 are (I THINK) the global 3x3 rotation matrix, a translation t (2x2 ie. (x,y)), 
+    pn();pe()
+    print("Saving parameters from this past run...")
+    print("params are pose (size 69), shape (size 10), rotation(4), translation(2), and scale (1)")  # NO.  This would add up to 86, but our printed result says theta.shape==(1,85)
+    # We employ the weak-perspective camera model and solve for the global rotation R (9) in (axis-angle representation (https://en.wikipedia.org/wiki/Axis-angle_representation)), translation t (2) and scale s (1).  Note: we STILL haven't figured out which part of the Theta is the shape parameters (Betas).  This is the next part we're looking for.    (nxb,   Wed Mar 13 12:00:53 EDT 2019)
+    # roll, pitch and yaw should be possible (ie. compress rotation to 3 numbers instead of 4)  But I guess axis-angle representation is easier to compute??
+    pe();pn();
+    npy_fname=img_path[img_path.rfind('/')+1:]+"__Theta_params.npy"
+    pr("numpy params Theta are:\n", theta)
+    pr("max param {0} is at: {1}".format(np.max(theta),np.argmax(theta)))
+    end=range(theta.shape[1]-     9            ,theta.shape[1])  # num in the middle of the spaces is the important one
+    pr("end=",end)
+    sorted_Thetas_indices=np.argsort(theta)
+    sorted_Thetas=theta[:,sorted_Thetas_indices][0][0]
+    pr("sorted_Thetas:\n",sorted_Thetas)
+    pr("sorted_Thetas[end]:\n",sorted_Thetas[end])
+    pr("sorted_Thetas_indices.shape:\n",sorted_Thetas_indices.shape)
+    pr("sorted_Thetas_indices[end]:\n",sorted_Thetas_indices[:,end])
+
+    pe();pn(); pr("Saving numpy params at "+npy_fname);pn();pe()
+    thetas_sorted=np.sort(theta)
+    np.save(img_path[img_path.rfind('/')+1:]+"__Theta_params.npy", theta)
+    np.save(img_path[img_path.rfind('/')+1:]+"__beta_params.npy" , theta[:,70:80])
     print('\n'*4+"saving vertices...")
     print("outmesh_path is ",outmesh_path); print('\n'*4)
     with open( outmesh_path, 'a') as fp:
       for vert_idx in range(verts.shape[1]):
         fp.write( 'v %f %f %f\n' % ( verts[0,vert_idx,0], verts[0,vert_idx,1], verts[0,vert_idx,2] ))
+    visualize(img, proc_param, joints[0], verts[0], cams[0])
 
-    """
-    print('verts.shape:\n',verts.shape) # (1, 6890, 3)
-    print('cams:\n',cams)
-    print('joints:\n',joints)
-    print('joints3d:\n',joints3d)
-    print('theta:\n',theta)
-    """
+    #print('verts.shape:\n',verts.shape) # (1, 6890, 3)
+#====================== end main(params) (basically.  technically this isn't the end of main, but the rest ofthe crap below was just print statements and debugging) =====================
 
     d=dir;from pprint import pprint as p; #print(d(model)) #['E_var', '__class__', '__delattr__', '__dict__', '__doc__', '__format__', '__getattribute__', '__hash__', '__init__', '__module__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__', '__weakref__', 'all_Js', 'all_cams', 'all_kps', 'all_verts', 'batch_size', 'build_test_model_ief', 'config', 'data_format', 'final_thetas', 'images_pl', 'img_feat', 'img_size', 'joint_type', 'load_path', 'mean_value', 'mean_var', 'model_type', 'num_cam', 'num_stage', 'num_theta', 'predict', 'predict_dict', 'prepare', 'proj_fn', 'saver', 'sess', 'smpl', 'smpl_model_path', 'total_params']
     #p(d(model.smpl)) # ['J_regressor', 'J_transformed', '__call__', '__class__', '__delattr__', '__dict__', '__doc__', '__format__', '__getattribute__', '__hash__', '__init__', '__module__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__', '__weakref__', 'joint_regressor', 'num_betas', 'parents', 'posedirs', 'shapedirs', 'size', 'v_template', 'weights']
@@ -289,9 +257,10 @@ def main(img_path, json_path=None):
     #print(verts.shape)  #(1,6890,3)   6890 vertices
     #verts[0,-1]=np.array([10000,-10,0])
     # ^ this line "verts[0,-1]=np.array([10000,-10,0])"  worked (as hoped) to fuck up a single vertex of the skin-model.
-    #visualize(img, proc_param, joints[0], verts[0], cams[0])
     # NOTE: this has the side effect of saving the faces at the end of the file name specified in outmesh_path
+#====================== end main(params) =====================
 
+#=============================================================
 def make_mesh(img_path):
     # this was an old version for Pierlorenzo (~Feb 7-10, 2019)
     if os.path.isfile(outmesh_path):
@@ -307,15 +276,15 @@ def make_mesh(img_path):
 
     main(img_path, config.json_path) # here, img_path is a parameter, not from config.
     # NOTE: oughta do this the right way, but right now the .obj file is getting written "backward."  So we just gotta rewrite it.  We do that in the fix() function
-    fix()
     with open(outmesh_path, 'r') as fp:
       return fp.read() # fp?  fp.read()?  NOTE: Pier said the actual file is preferable to just the string, but I'm not sure what he means by this.  What's the difference between the file and the string contents?
       #return fp.read()
+#====================== end make_mesh(params) =====================
 
 
 
 
-  
+ 
 
 if __name__ == '__main__':
     if os.path.isfile(outmesh_path):
@@ -330,6 +299,9 @@ if __name__ == '__main__':
     renderer = vis_util.SMPLRenderer(face_path=config.smpl_face_path)
 
     #main3(config.img_path, config.json_path)
+    print("configs:             ",config)
+    print("config.img_path:     ",config.img_path)
+    print("config.json_path:    ",config.json_path)
     main(config.img_path, config.json_path)
     # NOTE: oughta do this the right way, but right now the .obj file is getting written "backward."  So we just gotta rewrite it.  We do that in the fix() function
     fix()

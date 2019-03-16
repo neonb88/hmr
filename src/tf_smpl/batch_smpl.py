@@ -17,10 +17,12 @@ import tensorflow as tf
 from .batch_lbs import batch_rodrigues, batch_global_rigid_transformation
 
 
-# There are chumpy variables so convert them to numpy.
+# There are chumpy variables so convert them to numpy.      NOTE wat.  It exists!  Chumpy conversion!
 def undo_chumpy(x):
     return x if isinstance(x, np.ndarray) else x.r
 
+def pn(n):
+  print('\n'*n)
 
 class SMPL(object):
     def __init__(self, pkl_path, joint_type='cocoplus', dtype=tf.float32):
@@ -85,7 +87,7 @@ class SMPL(object):
             import ipdb
             ipdb.set_trace()
 
-    # This func is part of class SMPL.  -Nathan, FEb 13, 2019
+    # This func is part of class SMPL.  -Nathan, Feb 13, 2019
     # __call__() is used on an instance of SMPL (more about __call__ [here](https://stackoverflow.com/questions/9663562/what-is-the-difference-between-init-and-call-in-python)).  ie. model=SMPL(); model(beta, theta)
     def __call__(self, beta, theta, get_skin=False, name=None):
         """
@@ -106,6 +108,9 @@ class SMPL(object):
 
         with tf.name_scope(name, "smpl_main", [beta, theta]):
             num_batch = beta.shape[0].value
+            pn(9); print("="*99); print("="*99); print("="*99)
+            print("betas: ",beta) # result is "betas:  Tensor("strided_slice_8:0", shape=(1, 10), dtype=float32)"
+            print("="*99); print("="*99); print("="*99); pn(9)
 
             # 1. Add shape blend shapes
             # (N x 10) x (10 x 6890*3) = N x 6890 x 3

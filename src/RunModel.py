@@ -53,7 +53,9 @@ class RunModel(object):
         # Theta size: camera (3) + pose (24*3) + shape (10)
         self.total_params = self.num_cam + self.num_theta + 10
 
-        self.smpl = SMPL(self.smpl_model_path, joint_type=self.joint_type)  # NOTE:  call to actual SMPL() object is here.  Can we get betas?
+        self.smpl = SMPL(self.smpl_model_path, joint_type=self.joint_type)  
+        # NOTE:  call to actual SMPL() object is here (SMPL(...params)).  Can we get the betas out?
+        #Reply: as of Tue Mar  5 07:48:17 EST 2019, I think the betas inside are initially tensorflow variables, not numpy (ie. their values are not set in stone until AFTER this funccall concludes.)
         """
         print(self.smpl.__class__)
         print('class of obj from hello_smpl.py is <class \'chumpy.ch_ops.add\'>')
@@ -138,8 +140,10 @@ class RunModel(object):
         self.mean_value = self.sess.run(self.mean_var)
             
     def predict(self, images, get_theta=False):
+        # is [this] (see below) a shape of a numpy array?  Is type(images)=='np.array'?
+        #images: num_batch, img_size, img_size, 3  
         """
-        images: num_batch, img_size, img_size, 3
+        images: num_batch, img_size, img_size, 3  
         Preprocessed to range [-1, 1]
         """
         results = self.predict_dict(images)
@@ -168,10 +172,156 @@ class RunModel(object):
             'theta': self.final_thetas[-1],
         }
 
-        results = self.sess.run(fetch_dict, feed_dict)
+        results = self.sess.run(fetch_dict, feed_dict)  # This "(self.sess.run(fetch_dict, feed_dict))" must be called before we can get the betas out of smpl?
+        # the real question is: CAN we even get the betas out?  predict_dict() predicts the values of joints, verts, cams, joints3d, and theta just fine, but can we relearn the betas from these values?
+        """
+        'joints': self.all_kps[-1],
+        'verts': self.all_verts[-1],
+        'cams': self.all_cams[-1],
+        'joints3d': self.all_Js[-1],
+        'theta': self.final_thetas[-1],
+        """
 
         # Return joints in original image space.
         joints = results['joints']
         results['joints'] = ((joints + 1) * 0.5) * self.img_size
 
         return results
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
