@@ -44,7 +44,7 @@ flags.DEFINE_string(
     'json_path', None,
     'If specified, uses the openpose output to crop the image.')
 
-outmesh_path = '/home/n/x/p/fresh____as_of_Dec_12_2018/vr_mall____fresh___Dec_12_2018/src/web/upload_img_flask/mesh.obj' # faces in src/util/renderer.py
+outmesh_path = '/home/n/x/p/fresh____as_of_Dec_12_2018/vr_mall____fresh___Dec_12_2018/src/web/upload_img_flask/mesh.obj' # faces in src/util/renderer.py   .   We should really learn how to use absl and configs and standardize
 
 #=========================================================================
 def pltshow(x):
@@ -214,12 +214,15 @@ def main(img_path, json_path=None):
     pe();pn(); pr("Saving numpy params at "+npy_fname);pn();pe()
     thetas_sorted=np.sort(theta)
     np.save(img_path[img_path.rfind('/')+1:]+"__Theta_params.npy", theta)
-    np.save(img_path[img_path.rfind('/')+1:]+"__beta_params.npy" , theta[:,70:80])
+    #np.save(img_path[img_path.rfind('/')+1:]+"__beta_params7080.npy" , theta[:,70:80])
+    #np.save(img_path[img_path.rfind('/')+1:]+"__beta_params6979.npy" , theta[:,69:79])
+    np.save(img_path[img_path.rfind('/')+1:]+"__beta_params.npy" , theta[:,69:79])
     print('\n'*4+"saving vertices...")
     print("outmesh_path is ",outmesh_path); print('\n'*4)
     with open( outmesh_path, 'a') as fp:
       for vert_idx in range(verts.shape[1]):
         fp.write( 'v %f %f %f\n' % ( verts[0,vert_idx,0], verts[0,vert_idx,1], verts[0,vert_idx,2] ))
+    fix()
     visualize(img, proc_param, joints[0], verts[0], cams[0])
 
     #print('verts.shape:\n',verts.shape) # (1, 6890, 3)
@@ -304,7 +307,6 @@ if __name__ == '__main__':
     print("config.json_path:    ",config.json_path)
     main(config.img_path, config.json_path)
     # NOTE: oughta do this the right way, but right now the .obj file is getting written "backward."  So we just gotta rewrite it.  We do that in the fix() function
-    fix()
 
 
 
