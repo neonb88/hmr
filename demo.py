@@ -47,6 +47,8 @@ flags.DEFINE_string(
 outmesh_path = '/home/n/x/p/fresh____as_of_Dec_12_2018/vr_mall____fresh___Dec_12_2018/src/web/upload_img_flask/mesh.obj' # faces in src/util/renderer.py   .   We should really learn how to use absl and configs and standardize
 
 #=========================================================================
+def pe(n=89): print('='*n)
+#=========================================================================
 def pltshow(x):
   plt.imshow(x); plt.show(); plt.close()
 #=========================================================================
@@ -55,6 +57,7 @@ def pe(n=89):
   print("="*n)
 def pn(n=0):
   print("\n"*n)
+#=========================================================================
 def fix():
   # flips .obj file so faces are after vertices
   fresh_outmesh_path  = '/home/n/x/p/fresh____as_of_Dec_12_2018/vr_mall____fresh___Dec_12_2018/src/web/upload_img_flask/freshmesh.obj'
@@ -69,6 +72,7 @@ def fix():
       if 'f' in line:
         fp.write(line)
   sp.call(['mv', '-f', fresh_outmesh_path, outmesh_path])
+#=========================================================================
 def visualize(img, proc_param, joints, verts, cam):
     """
     Renders the result in original image coordinate frame.
@@ -88,6 +92,8 @@ def visualize(img, proc_param, joints, verts, cam):
         vert_shifted, 60, cam=cam_for_render, img_size=img.shape[:2])
     rend_img_vp2 = renderer.rotated(
         vert_shifted, -60, cam=cam_for_render, img_size=img.shape[:2])
+
+    plt.imshow(skel_img); plt.show(); plt.close()
 
     plt.figure(1)
     plt.clf()
@@ -201,22 +207,16 @@ def main(img_path, json_path=None):
     pe();pn();
     npy_fname=img_path[img_path.rfind('/')+1:]+"__Theta_params.npy"
     pr("numpy params Theta are:\n", theta)
-    pr("max param {0} is at: {1}".format(np.max(theta),np.argmax(theta)))
-    end=range(theta.shape[1]-     9            ,theta.shape[1])  # num in the middle of the spaces is the important one
-    pr("end=",end)
-    sorted_Thetas_indices=np.argsort(theta)
-    sorted_Thetas=theta[:,sorted_Thetas_indices][0][0]
-    pr("sorted_Thetas:\n",sorted_Thetas)
-    pr("sorted_Thetas[end]:\n",sorted_Thetas[end])
-    pr("sorted_Thetas_indices.shape:\n",sorted_Thetas_indices.shape)
-    pr("sorted_Thetas_indices[end]:\n",sorted_Thetas_indices[:,end])
+    betas=theta[:,75:]
+    pe();pe();pe();pr("shape params beta are\n {0}".format(betas));pe();pe();pe()
+
 
     pe();pn(); pr("Saving numpy params at "+npy_fname);pn();pe()
-    thetas_sorted=np.sort(theta)
     np.save(img_path[img_path.rfind('/')+1:]+"__Theta_params.npy", theta)
     #np.save(img_path[img_path.rfind('/')+1:]+"__beta_params7080.npy" , theta[:,70:80])
     #np.save(img_path[img_path.rfind('/')+1:]+"__beta_params6979.npy" , theta[:,69:79])
-    np.save(img_path[img_path.rfind('/')+1:]+"__beta_params.npy" , theta[:,69:79])
+    np.save(img_path[img_path.rfind('/')+1:]+"__beta_params.npy" , betas)
+    # this just CAN'T be right.  It failed on something (looked totally different through render_SMPL.py than it did through this HMR)
     print('\n'*4+"saving vertices...")
     print("outmesh_path is ",outmesh_path); print('\n'*4)
     with open( outmesh_path, 'a') as fp:

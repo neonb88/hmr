@@ -14,8 +14,8 @@ def compute_similarity_transform(S1, S2):
     Computes a similarity transform (sR, t) that takes
     a set of 3D points S1 (3 x N) closest to a set of 3D points S2,
     where R is an 3x3 rotation matrix, t 3x1 translation, s scale.
-    i.e. solves the orthogonal Procrutes problem.
-    '''
+    i.e. solves the orthogonal Procrutes problem.       
+    ''' # guessing she meant   "Procrustes." -nxb
     transposed = False
     if S1.shape[0] != 3 and S1.shape[0] != 2:
         S1 = S1.T

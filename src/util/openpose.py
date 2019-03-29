@@ -5,7 +5,11 @@ import json
 import numpy as np
 
 
+#============================================================
+def pe(n=89): print('='*n)
+#============================================================
 def read_json(json_path):
+    pe();print("json_path is ",json_path);pe()
     with open(json_path) as f:
         data = json.load(f)
     kps = []

@@ -115,6 +115,7 @@ def main(unused_argv):
     if not exists(FLAGS.output_directory):
         makedirs(FLAGS.output_directory)
 
+    # motion capture    -nxb, (Thu Mar 28 11:37:33 EDT 2019)
     process_smpl_mocap(all_pkl, FLAGS.output_directory, FLAGS.num_shards,
                        FLAGS.dataset_name)
 
