@@ -31,7 +31,7 @@ import tensorflow as tf
 
 from src.util import renderer as vis_util
 from src.util import image as img_util
-from src.util import openpose as op_util
+from src.util import openpose
 import src.config
 from src.RunModel import RunModel
 #import matplotlib as mpl
@@ -44,7 +44,7 @@ flags.DEFINE_string(
     'json_path', None,
     'If specified, uses the openpose output to crop the image.')
 
-outmesh_path = '/home/n/x/p/fresh____as_of_Dec_12_2018/vr_mall____fresh___Dec_12_2018/src/web/upload_img_flask/mesh.obj' # faces in src/util/renderer.py   .   We should really learn how to use absl and configs and standardize
+outmesh_path = '/home/n/x/p/fresh____as_of_Dec_12_2018/vr_mall____fresh___Dec_12_2018/src/web/upload_img_flask/mesh.obj' # faces in src/util/renderer.py   .   We should really learn how to use absl.flags and configs and standardize handling of cmd-line-args/parameters
 
 #=========================================================================
 def pe(n=89): print('='*n)
@@ -79,11 +79,13 @@ def visualize(img, proc_param, joints, verts, cam):
     """
     funcname=  sys._getframe().f_code.co_name
     print("entering function "+funcname)
-    cam_for_render, vert_shifted, joints_orig = vis_util.get_original(
+    print("joints:\n",joints)
+    cam_for_render, vert_shifted, joints_orig = vis_util.get_original( #=============*****=============
         proc_param, verts, cam, joints, img_size=img.shape[:2])
 
     # Render results
-    skel_img = vis_util.draw_skeleton(img, joints_orig)
+    skel_img = vis_util.draw_skeleton(img, joints_orig)    # openpose keypoints should be projected here.
+    plt.imshow(skel_img);plt.show();plt.close()
     rend_img_overlay = renderer(
         vert_shifted, cam=cam_for_render, img=img, do_alpha=True)
     rend_img = renderer(
@@ -93,7 +95,7 @@ def visualize(img, proc_param, joints, verts, cam):
     rend_img_vp2 = renderer.rotated(
         vert_shifted, -60, cam=cam_for_render, img_size=img.shape[:2])
 
-    plt.imshow(skel_img); plt.show(); plt.close()
+    #plt.imshow(skel_img); plt.show(); plt.close()
 
     plt.figure(1)
     plt.clf()
@@ -102,7 +104,7 @@ def visualize(img, proc_param, joints, verts, cam):
     plt.title('input')
     plt.axis('off')
     plt.subplot(232)
-    plt.imshow(skel_img)
+    plt.imshow(skel_img) # openpose keypoints should be projected here.
     plt.title('joint projection')
     plt.axis('off')
     plt.subplot(233)
@@ -132,8 +134,8 @@ def visualize(img, proc_param, joints, verts, cam):
 
 #=======================================================
 def preprocess_image(img_path, json_path=None):
-    img = io.imread(img_path)  # img is a numpy array.  Yusssss
-    print("img.shape:\n{0}\n\n".format(img.shape))
+    img = io.imread(img_path) # img is nparr.  Yusssss
+    #print("img.shape:\n{0}\n\n".format(img.shape)) # original shape
     if img.shape[2] == 4:
         img = img[:, :, :3]
 
@@ -147,16 +149,23 @@ def preprocess_image(img_path, json_path=None):
         # image center in (x,y)
         center = center[::-1]
     else:
-        scale, center = op_util.get_bbox(json_path)
+        scale, center = openpose.get_bbox(json_path)
+        print("using openpose keypoints  json...")
+        print("scale: ",scale) # 0.12
+        print("center: ",center)
 
     crop, proc_param = img_util.scale_and_crop(img, scale, center,
                                                config.img_size)
+    print("crop.size:",crop.size)
+    pltshow(crop)  # for my Dropbox/vr_mall_backup/IMPORTANT/front.jpg image, this crop did something real weird to it.  Might be because the openpose keypoints are in a different order??   (HMR & Kanazawa are using 1.0 whereas I'm using 1.2)
 
     # Normalize image to [-1, 1]
     crop = 2 * ((crop / 255.) - 0.5)
+    pltshow(crop)
 
     return crop, proc_param, img
-#=======================================================
+    # result of this is weird-looking.  I wonder if the weird-looking image is what should get fed into tensorflow.
+#========= end func preprocess_image(params) ==========
 def preprocess_image_nathan(img, json_path=None):
     print("img.shape:\n{0}\n\n".format(img.shape))
     if img.shape[2] == 4:
@@ -172,7 +181,7 @@ def preprocess_image_nathan(img, json_path=None):
         # image center in (x,y)
         center = center[::-1]
     else:
-        scale, center = op_util.get_bbox(json_path)
+        scale, center = openpose.get_bbox(json_path)
 
     crop, proc_param = img_util.scale_and_crop(img, scale, center,
                                                config.img_size)
@@ -185,9 +194,11 @@ def preprocess_image_nathan(img, json_path=None):
 #=======================================================
 def main(img_path, json_path=None):
     sess = tf.Session()
-    model = RunModel(config, sess=sess)
+    model = RunModel(config, sess=sess) #   The session is initialized to the base session.
 
     input_img, proc_param, img = preprocess_image(img_path, json_path)  # resizing would happen HERE.
+    #pltshow(input_img) # weird-looking thing
+    #pltshow(img)       # regular. (original image from img_path)
 
     # Add batch dimension: 1 x D x D x 3
     input_img = np.expand_dims(input_img, 0)
@@ -198,6 +209,12 @@ def main(img_path, json_path=None):
     # shape is 10D shape coefficients of SMPL
     joints, verts, cams, joints3d, theta = model.predict(
         input_img, get_theta=True)
+
+
+    # TODO: could replace the manually-gotten openpose keypts right here.   The only issue I see is image gets preprocessed somehow in a weird way, and out here we don't have access to that preprocessing?  Oh wait but maybe we actually do.
+    #print("flags.json_path:",flags.json_path)
+    print("joints.shape:\n",joints.shape)     # (1,19,2)
+    print("joints3d.shape:\n",joints3d.shape) # (1,19,3)
     # REVISED NOTE: the first 69 params within the Theta (uppercase theta) are pose parameters.  There are actually 23 joints we're considering, and then each of the 23 joints somehow has only 3 parameters defining a rotation around that joint.  I'm guessing it's like roll, pitch, and yaw?  last 3 are (I THINK) the global 3x3 rotation matrix, a translation t (2x2 ie. (x,y)), 
     pn();pe()
     print("Saving parameters from this past run...")
@@ -207,6 +224,7 @@ def main(img_path, json_path=None):
     pe();pn();
     npy_fname=img_path[img_path.rfind('/')+1:]+"__Theta_params.npy"
     pr("numpy params Theta are:\n", theta)
+    #betas=theta[:,:10] # Dario: 8.94922972e-01  -1.99318747e-03   3.30826014e-01   3.17589712e+00 -4.34613004e-02   7.38726035e-02  -3.40631828e-02   3.82730104e-02 8.03193599e-02  -6.42330498e-02
     betas=theta[:,75:]
     pe();pe();pe();pr("shape params beta are\n {0}".format(betas));pe();pe();pe()
 
@@ -216,7 +234,6 @@ def main(img_path, json_path=None):
     #np.save(img_path[img_path.rfind('/')+1:]+"__beta_params7080.npy" , theta[:,70:80])
     #np.save(img_path[img_path.rfind('/')+1:]+"__beta_params6979.npy" , theta[:,69:79])
     np.save(img_path[img_path.rfind('/')+1:]+"__beta_params.npy" , betas)
-    # this just CAN'T be right.  It failed on something (looked totally different through render_SMPL.py than it did through this HMR)
     print('\n'*4+"saving vertices...")
     print("outmesh_path is ",outmesh_path); print('\n'*4)
     with open( outmesh_path, 'a') as fp:
@@ -292,15 +309,11 @@ def make_mesh(img_path):
 if __name__ == '__main__':
     if os.path.isfile(outmesh_path):
       sp.call(['rm', outmesh_path]) # b/c old mesh
-
     config(sys.argv)
     # Using pre-trained model, change this to use your own.
     config.load_path = src.config.PRETRAINED_MODEL
-
     config.batch_size = 1
-
     renderer = vis_util.SMPLRenderer(face_path=config.smpl_face_path)
-
     #main3(config.img_path, config.json_path)
     print("configs:             ",config)
     print("config.img_path:     ",config.img_path)

@@ -7,6 +7,13 @@ from __future__ import print_function
 import tensorflow as tf
 import numpy as np
 from os.path import exists
+import os
+
+# nxb's imports:
+import sys
+from pprint import pprint as p
+import matplotlib.pyplot as plt
+import pickle as pkl
 
 from .tf_smpl import projection as proj_util
 from .tf_smpl.batch_smpl import SMPL
@@ -17,6 +24,7 @@ class RunModel(object):
         """
         Args:
           config
+          The session is initialized to the base session.
         """
         self.config = config
         self.load_path = config.load_path
@@ -72,6 +80,10 @@ class RunModel(object):
             self.sess = tf.Session()
         else:
             self.sess = sess
+        if not os.path.exists('summaries'):
+            os.mkdir('summaries')
+        if not os.path.exists(os.path.join('summaries','first')):
+            os.mkdir(os.path.join('summaries','first'))
         
         # Load data.
         self.saver = tf.train.Saver()
@@ -140,10 +152,11 @@ class RunModel(object):
         self.mean_value = self.sess.run(self.mean_var)
             
     def predict(self, images, get_theta=False):
+        # NOTE: VHMR can be tried by extending this function.
         # is [this] (see below) a shape of a numpy array?  Is type(images)=='np.array'?
-        #images: num_batch, img_size, img_size, 3  
+        #images: num_batch, img_size, img_size, 3
         """
-        images: num_batch, img_size, img_size, 3  
+        images: num_batch, img_size, img_size, 3
         Preprocessed to range [-1, 1]
         """
         results = self.predict_dict(images)
@@ -154,23 +167,41 @@ class RunModel(object):
             return results['joints'], results['verts'], results['cams'], results[
                 'joints3d']
 
+    #======================================================================================
+        #======================================================================================
+        #========================== IMPORTANT FUNCTION predict_dict() =========================
+        #======================================================================================
+        #                 it gets the joint locations.
     def predict_dict(self, images):
         """
         images: num_batch, img_size, img_size, 3
         Preprocessed to range [-1, 1]
         Runs the model with images.
         """
+        plt.imshow(images.reshape(224,224,3));  plt.show();  plt.close()
+        print("images.shape is {0}".format(images.shape)) # images.shape is (1, 224, 224, 3)
+
         feed_dict = {
             self.images_pl: images,
             # self.theta0_pl: self.mean_var,
         }
         fetch_dict = {
-            'joints': self.all_kps[-1],
+            'joints': self.all_kps[-1],  # maybe just don't fetch this "joints" variable, and instead turn absl.config.json_path into the old format HMR requests.
             'verts': self.all_verts[-1],
             'cams': self.all_cams[-1],
             'joints3d': self.all_Js[-1],
             'theta': self.final_thetas[-1],
         }
+        print("fetch_dict is :")
+        p(fetch_dict)
+
+        '''
+        with open('tf_sess.pkl', 'wb') as f:     
+          pkl.dump(self.sess, f)
+
+        # I think what's happening is it's impossible to pickle a class inside of a different module   than the name of that class.
+        '''
+        summ_writer = tf.summary.FileWriter(os.path.join('summaries','first'), self.sess.graph)
 
         results = self.sess.run(fetch_dict, feed_dict)  # This "(self.sess.run(fetch_dict, feed_dict))" must be called before we can get the betas out of smpl?
         # the real question is: CAN we even get the betas out?  predict_dict() predicts the values of joints, verts, cams, joints3d, and theta just fine, but can we relearn the betas from these values?
@@ -182,11 +213,17 @@ class RunModel(object):
         'theta': self.final_thetas[-1],
         """
 
-        # Return joints in original image space.
+        # Return joints in original image space.        
+          # (ie. we ran openpose on the 224x224 img, then resized them to the original image's size.)   
+            # -nxb, Fri Mar 29 11:21:27 EDT 2019
         joints = results['joints']
-        results['joints'] = ((joints + 1) * 0.5) * self.img_size
+        joints=((joints + 1) * 0.5) * self.img_size
+        print("joints.shape:",joints.shape) # (1,19,2)
+        plt.scatter(joints[:,:,0], joints[:,:,1]); plt.show(); plt.close()
+        results['joints'] = joints
 
         return results
+    #======================== end func predict_dict(params) ===============================
 
 
 

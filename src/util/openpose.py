@@ -4,6 +4,8 @@ Script to convert openpose output into bbox
 import json
 import numpy as np
 
+import sys
+
 
 #============================================================
 def pe(n=89): print('='*n)
@@ -20,9 +22,17 @@ def read_json(json_path):
 
 
 def get_bbox(json_path, vis_thr=0.2):
+    '''
+      Gets bounding box for image from the json.
+      Roughly speaking, I THINK it returns where the cernter of the new image should be and scales the image by the right relative proportion.  (ie. return value of 1/2 would result in an image with half the x_resolution and half the y_resolution.
+    '''
+    funcname=sys._getframe().f_code.co_name
+    print("entered function ",funcname)
     kps = read_json(json_path)
     # Pick the most confident detection.
+    print("kps: ",kps)
     scores = [np.mean(kp[kp[:, 2] > vis_thr, 2]) for kp in kps]
+    print("scores: ",scores)
     kp = kps[np.argmax(scores)]
     vis = kp[:, 2] > vis_thr
     vis_kp = kp[vis, :2]
